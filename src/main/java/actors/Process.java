@@ -12,6 +12,9 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import actors.msg.ReadMsg;
+import actors.msg.WriteMsg;
+
 public class Process extends UntypedAbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);   // Logger attached to actor
     private final int N;    // Number of processes
@@ -20,14 +23,26 @@ public class Process extends UntypedAbstractActor {
     private Integer proposal;
     private int value;
     private int timestamp;
+    private Action action;
+    private State state;
     
     public Process(int ID, int nb) {
         N = nb;
         id = ID;
+        action = Action.NONE;
+        state = State.WAIT;
     }
     
     public String toString() {
-        return "Process{" + "id=" + id ;
+        return "Process{" + "id=" + id;
+    }
+    
+    public enum Action {
+    	PUT, GET, NONE;
+    }
+    
+    public enum State {
+    	WRITE, READ, WAIT;
     }
 
     /**
@@ -40,7 +55,7 @@ public class Process extends UntypedAbstractActor {
     }
     
     
-    private void readeReceived() {
+    private void readReceived() {
         log.info("read request received " + self().path().name());
     }
     
@@ -58,7 +73,7 @@ public class Process extends UntypedAbstractActor {
           /*
           else if (message instanceof WriteMsg) {
               WriteMsg m = (WriteMsg) message;
-              this.writeReceived(m.v);
+              this.writeReceived(m.value);
       
           }
           else if (message instanceof ReadMsg) {
