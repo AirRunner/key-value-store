@@ -45,7 +45,7 @@ public class Process extends UntypedAbstractActor {
     }
     
     private void writeReceived() {
-            log.info("write request received " + self().path().name() );
+    	log.info("write request received " + self().path().name());
     }
     
     
