@@ -2,8 +2,8 @@
 <project>
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>hello-akka-java</groupId>
-    <artifactId>app</artifactId>
+    <groupId>akka-java</groupId>
+    <artifactId>key-value-store</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -54,7 +54,7 @@
                     <arguments>
                         <argument>-classpath</argument>
                         <classpath />
-                        <argument>com.example.AkkaQuickstart</argument>
+                        <argument>actors.Main</argument>
                     </arguments>
                 </configuration>
             </plugin>

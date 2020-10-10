@@ -1,4 +1,4 @@
-package com.example;
+package actors;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;

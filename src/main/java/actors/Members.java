@@ -1,6 +1,8 @@
-package com.example;
+package actors;
+
 import akka.actor.ActorRef;
 import java.util.ArrayList;
+
 /**
  * Class containing the processes' references
  */

@@ -1,8 +1,9 @@
-package com.example;
+package actors;
+
+import java.util.ArrayList;
+
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
-import java.util.*;
-
 
 public class Main {
 
