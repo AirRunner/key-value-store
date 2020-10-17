@@ -33,16 +33,17 @@ public class Main {
         }
         
         // Begin tests
+        ActorRef nobody = ActorRef.noSender();
         ActorRef p0 = m.references.get(0);
         ActorRef p3 = m.references.get(3);
         ActorRef p5 = m.references.get(5);
         ActorRef p7 = m.references.get(7);
 
-        p3.tell(new Fail(), ActorRef.noSender());
-        p5.tell(new Fail(), ActorRef.noSender());
-        p0.tell(new Put(2), ActorRef.noSender());
-        p0.tell(new Get(), ActorRef.noSender());
-        p7.tell(new Get(), ActorRef.noSender());
-        p7.tell(new Put(8), ActorRef.noSender());
+        p3.tell(new Fail(), nobody);
+        p5.tell(new Fail(), nobody);
+        p0.tell(new Put(2), nobody);
+        p0.tell(new Get(), nobody);
+        p7.tell(new Get(), nobody);
+        p7.tell(new Put(8), nobody);
     }
 }
