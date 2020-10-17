@@ -2,6 +2,8 @@ package actors;
 
 import java.util.ArrayList;
 
+import actors.msg.Get;
+import actors.msg.Put;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 
@@ -28,5 +30,8 @@ public class Main {
         for (ActorRef actor : references) {
             actor.tell(m, ActorRef.noSender());
         }
+        
+        m.references.get(2).tell(new Put(5), ActorRef.noSender());
+        m.references.get(2).tell(new Get(), ActorRef.noSender());
     }
 }
