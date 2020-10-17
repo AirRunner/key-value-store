@@ -1,5 +1,5 @@
 package actors.msg;
 
-public class ReadMsg {
+public class Fail {
 
 }
