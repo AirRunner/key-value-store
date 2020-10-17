@@ -2,8 +2,9 @@ package actors;
 
 import java.util.ArrayList;
 
-import actors.msg.Get;
-import actors.msg.Put;
+import actors.operation.Get;
+import actors.operation.Put;
+import actors.operation.Fail;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 
@@ -31,7 +32,17 @@ public class Main {
             actor.tell(m, ActorRef.noSender());
         }
         
-        m.references.get(2).tell(new Put(5), ActorRef.noSender());
-        m.references.get(2).tell(new Get(), ActorRef.noSender());
+        // Begin tests
+        ActorRef p0 = m.references.get(0);
+        ActorRef p3 = m.references.get(3);
+        ActorRef p5 = m.references.get(5);
+        ActorRef p7 = m.references.get(7);
+
+        p3.tell(new Fail(), ActorRef.noSender());
+        p5.tell(new Fail(), ActorRef.noSender());
+        p0.tell(new Put(2), ActorRef.noSender());
+        p0.tell(new Get(), ActorRef.noSender());
+        p7.tell(new Get(), ActorRef.noSender());
+        p7.tell(new Put(8), ActorRef.noSender());
     }
 }

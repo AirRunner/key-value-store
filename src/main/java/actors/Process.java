@@ -13,14 +13,8 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.UUID;
 
-import actors.msg.Fail;
-import actors.msg.Get;
-import actors.msg.Operation;
-import actors.msg.Put;
-import actors.msg.ReadRequest;
-import actors.msg.ReadResponse;
-import actors.msg.WriteRequest;
-import actors.msg.WriteResponse;
+import actors.operation.*;
+import actors.operation.msg.*;
 
 public class Process extends UntypedAbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);   // Logger attached to actor
@@ -45,109 +39,138 @@ public class Process extends UntypedAbstractActor {
     }
     
     public String toString() {
-        return "Process{" + "id=" + id;
-    }
+		return "Process {" + "id: " + this.id
+			+ ", state: " + this.state
+			+ ", value: " + this.value
+			+ ", timestamp: " + this.timestamp + "}";
+	}
     
-    public enum State {
-    	PUT, GET, FAULTY, WAIT, NONE;
-    }
-
-    /**
-     * Static function creating actor
-     */
-    public static Props createActor(int ID, int nb) {
-        return Props.create(Process.class, () -> {
-            return new Process(ID, nb);
-        });
-    }
-    
-    
+    // On message reception
     public void onReceive(Object message) throws Throwable {
     	if (this.state != State.FAULTY) {
-    		if (message instanceof Members) { // Save the system's info
+			// Save the members of the system
+    		if (message instanceof Members) {
     			Members m = (Members) message;
     			this.processes = m;
-    			log.info("p" + self().path().name() + " received processes info");
-    		}
+    			this.log.info("p" + self().path().name() + " received processes info");
+			}
+			// Become faulty
     		else if (message instanceof Fail) {
     			this.state = State.FAULTY;
-    			log.info("p" + self().path().name() + " becomes faulty");
-    		}
-    		else if (this.state == State.NONE && message instanceof Get) {
-    			this.state = State.GET;
-    			for (ActorRef actor : this.processes.references) {
-    				if (actor != self()) {
-    					ReadRequest rq = new ReadRequest(UUID.randomUUID());
-        				actor.tell(rq, self());
-    				}
-    			}
-    			log.info("p" + self().path().name() + " launched a get request");
-    		}
-    		else if (this.state == State.NONE && message instanceof Put) {
+    			this.log.info("p" + self().path().name() + " became faulty");
+			}
+			// Add message to the mailbox
+			else if (message instanceof Operation && this.state != State.NONE) {
+				this.mailbox.add((Operation) message);
+			}
+			// Process GET operation
+    		else if (message instanceof Get) {
+				this.state = State.GET;
+				this.log.info("p" + self().path().name() + " is launching a get request...");
+				sendRequests(Request.READ);
+				this.log.info("p" + self().path().name() + " launched a get request");
+			}
+			// Process PUT operation
+    		else if (message instanceof Put) {
     			this.state = State.PUT;
-    			this.proposal = ((Put) message).proposal;
-    			for (ActorRef actor : this.processes.references) {
-    				if (actor != self()) {
-    					ReadRequest rq = new ReadRequest(UUID.randomUUID());
-        				actor.tell(rq, self());
-    				}
-    			}
-    			log.info("p" + self().path().name() + " launched a put request");
-    		}
+				this.proposal = ((Put) message).proposal;
+				this.log.info("p" + self().path().name() + " is launching a put request...");
+				sendRequests(Request.READ);
+				this.log.info("p" + self().path().name() + " launched a put request");
+			}
+			// Process read request
     		else if (message instanceof ReadRequest) {
     			ReadRequest rq = (ReadRequest) message;
     			ReadResponse rs = new ReadResponse(rq.seqNumber, this.value, this.timestamp);
     			sender().tell(rs, self());
-    			log.info("p" + self().path().name() + " responded to a read request from p" + sender().path().name());
-    		}
-    		else if (this.state != State.NONE && this.state != State.WAIT && message instanceof ReadResponse) {
+    			this.log.info("p" + self().path().name() + " responded to a read request from p" + sender().path().name());
+			}
+			// Process read response
+    		else if (message instanceof ReadResponse && this.state != State.NONE && this.state != State.WAIT) {
     			ReadResponse rs = (ReadResponse) message;
     			this.ackNumber++;
 				if (rs.timestamp > this.timestamp) {
 					this.timestamp = rs.timestamp;
 					this.value = rs.value;
 				}
-    			if (this.state == State.GET) {
-    				if (this.ackNumber >= this.N/2) {
-    					this.state = State.NONE;
-    					this.ackNumber = 0;
-    					log.info("p" + self().path().name() + " got the value [" + this.value + "] with timestamp [" + this.timestamp + "]");
-    				}
-    			}
-    			else if (this.state == State.PUT) {
-    				if (this.ackNumber >= this.N/2) {
-    					this.timestamp++;
-    					this.value = this.proposal;
-    					for (ActorRef actor : this.processes.references) {
-    	    				if (actor != self()) {
-    	    					WriteRequest wq = new WriteRequest(UUID.randomUUID(), this.value, this.timestamp);
-    	        				actor.tell(wq, self());
-    	    				}
-    	    			}
-    					this.state = State.WAIT;
-    					this.ackNumber = 0;
-    				}
-    			}
-    		}
+				if (this.ackNumber >= this.N/2) {
+					this.ackNumber = 0;
+					if (this.state == State.GET) {
+						this.state = State.NONE;
+						this.log.info("p" + self().path().name() + " got the value [" + this.value + "] with timestamp [" + this.timestamp + "]");
+						processNext();
+					}
+					else if (this.state == State.PUT) {
+						this.timestamp++;
+						this.value = this.proposal;
+						sendRequests(Request.WRITE);
+						this.state = State.WAIT;
+					}
+				}
+			}
+			// Process write request
     		else if (message instanceof WriteRequest) {
     			WriteRequest wq = (WriteRequest) message;
     			this.timestamp = wq.timestamp;
     			this.value = wq.proposal;
     			WriteResponse ws = new WriteResponse(wq.seqNumber);
     			sender().tell(ws, self());
-    			log.info("p" + self().path().name() + " responded to a write request from p" + sender().path().name());
-    		}
-    		else if (this.state != State.NONE && message instanceof WriteResponse) {
+    			this.log.info("p" + self().path().name() + " responded to a write request from p" + sender().path().name());
+			}
+			// Process write response
+    		else if (message instanceof WriteResponse && this.state == State.WAIT) {
     			this.ackNumber++;
     			if (this.ackNumber >= this.N/2) {
-					this.state = State.NONE;
 					this.ackNumber = 0;
-					log.info("p" + self().path().name() + " put the value [" + this.value + "] with timestamp [" + this.timestamp + "]");
+					this.state = State.NONE;
+					this.log.info("p" + self().path().name() + " put the value [" + this.value + "] with timestamp [" + this.timestamp + "]");
+					processNext();
 				}
     		}
-    	}
+		}
+		// The process is faulty
     	else {
-    		log.info("p" + self().path().name() + " received a message but it is faulty");
+    		this.log.info("p" + self().path().name() + " received a message from p"+ sender().path().name() + " but is faulty");
     	}
-    }
+	}
+	
+
+	/** Enumerations **/
+	public enum State {
+		PUT, GET, FAULTY, WAIT, NONE;
+	}
+	
+	public enum Request {
+		WRITE, READ;
+	}
+
+
+	/** Private methods **/
+	private void processNext() throws Throwable {
+		if (!this.mailbox.isEmpty()) {
+			this.onReceive(this.mailbox.remove());
+		}
+	}
+
+	private void sendRequests(Request type) {
+		Object request;
+		for (ActorRef actor : this.processes.references) {
+			if (actor != self()) {
+				if (type == Request.WRITE) {
+					request = (WriteRequest) new WriteRequest(UUID.randomUUID(), this.value, this.timestamp);
+				}
+				else {
+					request = (ReadRequest) new ReadRequest(UUID.randomUUID());
+				}
+				actor.tell(request, self());
+			}
+		}
+	}
+
+	/** Static actor creation **/
+	public static Props createActor(int ID, int nb) {
+		return Props.create(Process.class, () -> {
+			return new Process(ID, nb);
+		});
+	}
 }
