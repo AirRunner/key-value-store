@@ -1,4 +1,4 @@
-package actors.msg;
+package actors.operation;
 
 public class Get extends Operation {
 

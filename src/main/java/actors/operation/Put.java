@@ -1,4 +1,4 @@
-package actors.msg;
+package actors.operation;
 
 public class Put extends Operation {
 	public final int proposal;

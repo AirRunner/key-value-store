@@ -1,4 +1,4 @@
-package actors.msg;
+package actors.operation.msg;
 
 import java.util.UUID;
 
