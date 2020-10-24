@@ -66,7 +66,6 @@ public class Process extends UntypedAbstractActor {
 			// Process GET operation
 			else if (message instanceof Get) {
 				this.timer = System.nanoTime();
-				System.out.println("GET: " + System.nanoTime());
 				this.state = State.GET;
 				this.log.info("p" + self().path().name() + " is launching a get request...");
 				sendRequests(Request.READ);
@@ -101,7 +100,6 @@ public class Process extends UntypedAbstractActor {
 					if (this.state == State.GET) {
 						this.state = State.NONE;
 						this.timer = System.nanoTime() - this.timer;
-						System.out.println("END GET: " + System.nanoTime());
 						this.log.info("p" + self().path().name() + " got the value [" + this.value + "] with timestamp [" + this.timestamp + "] in " + this.timer / 1000 + "μs");
 						processNext();
 					}
