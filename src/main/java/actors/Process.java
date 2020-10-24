@@ -16,7 +16,8 @@ import actors.operation.*;
 import actors.operation.msg.*;
 
 public class Process extends UntypedAbstractActor {
-	private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);   // Logger attached to actor
+	// private final LoggingAdapter log;   // Logger attached to actor
+	private Logger log;
 	private final int N;	// Number of processes
 	private final int id;   // ID of current process
 	private Members processes;  // other processes' references
@@ -29,6 +30,8 @@ public class Process extends UntypedAbstractActor {
 	private Queue<Operation> mailbox;
 
 	public Process(int ID, int nb) {
+		// this.log = Logging.getLogger(getContext().getSystem(), this);
+		this.log = new Logger();
 		this.N = nb;
 		this.id = ID;
 		this.value = 0;
