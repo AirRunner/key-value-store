@@ -37,6 +37,18 @@ public class Main {
 
     public static void main(String[] args) throws InterruptedException {
 
+        // Set N and M from command line arguments
+        try {
+            if (args.length >= 2) {
+                N = Integer.parseInt(args[0]);
+                M = Integer.parseInt(args[1]);
+            }
+        }
+        catch (NumberFormatException e) {
+            System.out.println("[WARNING] Invalid arguments. Setting N=3, M=3.");
+        }
+        
+
         // Instantiate an actor system
         final ActorSystem system = ActorSystem.create("system");
         system.log().info("System started with N=" + N + " and M=" + M);
