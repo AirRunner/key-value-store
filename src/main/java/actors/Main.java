@@ -1,6 +1,7 @@
 package actors;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 import actors.operation.Get;
 import actors.operation.Put;
@@ -11,6 +12,24 @@ import akka.actor.ActorSystem;
 public class Main {
 
     public static int N = 10;
+    public static int M = 10;
+
+    public static void faultyActors(ArrayList<ActorRef> r) {
+        int nbFaulty = N % 2 == 0 ? (N - 1) / 2 : N / 2;
+        Collections.shuffle(r);
+        for (int i = 0; i < nbFaulty; i++) {
+            r.get(i).tell(new Fail(), ActorRef.noSender());
+        }
+    }
+
+    public static void launch(ArrayList<ActorRef> r) {
+        for (ActorRef actor : r) {
+            for (int i = 0; i < M; i++) {
+                actor.tell(new Put(i * N + Integer.parseInt(actor.path().name())), ActorRef.noSender());
+                actor.tell(new Get(), ActorRef.noSender());
+            }
+        }
+    }
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -31,19 +50,9 @@ public class Main {
         for (ActorRef actor : references) {
             actor.tell(m, ActorRef.noSender());
         }
-        
-        // Begin tests
-        ActorRef nobody = ActorRef.noSender();
-        ActorRef p0 = m.references.get(0);
-        ActorRef p3 = m.references.get(3);
-        ActorRef p5 = m.references.get(5);
-        ActorRef p7 = m.references.get(7);
 
-        p3.tell(new Fail(), nobody);
-        p5.tell(new Fail(), nobody);
-        p0.tell(new Put(2), nobody);
-        p0.tell(new Get(), nobody);
-        p7.tell(new Get(), nobody);
-        p7.tell(new Put(8), nobody);
+        // Begin tests
+        faultyActors(references);
+        launch(references);
     }
 }
