@@ -31,6 +31,10 @@ public class Main {
         }
     }
 
+    public static void waitBeforeTerminate() throws InterruptedException {
+        Thread.sleep(5000);
+    }
+
     public static void main(String[] args) throws InterruptedException {
 
         // Instantiate an actor system
@@ -54,5 +58,16 @@ public class Main {
         // Begin tests
         faultyActors(references);
         launch(references);
+
+        // Wait 5 seconds before ending the program
+        try {
+            waitBeforeTerminate();
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            system.terminate();
+        }
     }
 }
