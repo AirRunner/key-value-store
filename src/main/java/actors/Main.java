@@ -32,14 +32,19 @@ public class Main {
     }
 
     public static void waitBeforeTerminate() throws InterruptedException {
-        Thread.sleep(5000);
+    	if (N == 100 && M == 100) {
+    		Thread.sleep(10000);
+    	}
+    	else {
+    		Thread.sleep(5000);
+    	}
     }
 
     public static void main(String[] args) throws InterruptedException {
 
         // Instantiate an actor system
         final ActorSystem system = ActorSystem.create("system");
-        system.log().info("System started with N=" + N + " and M=" + M);
+        // system.log().info("System started with N=" + N + " and M=" + M);
 
         // Set N and M from command line arguments
         try {

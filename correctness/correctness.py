@@ -9,8 +9,8 @@ def parseParams(string):
 
 
 def parseTime(string):
-    match = re.search(r"[0-9]{4}-.*\.[0-9]{6}", string)
-    return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S.%f")
+    match = re.search(r"[0-9]{4}-.*(\.|,)[0-9]{3,6}", string)
+    return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S{}%f".format(match[1]))
 
 
 def parseActor(string):

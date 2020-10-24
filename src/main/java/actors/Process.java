@@ -161,7 +161,8 @@ public class Process extends UntypedAbstractActor {
 		}
 	}
 
-	private void sendRequests(Request type) {
+	private void sendRequests(Request type) throws InterruptedException {
+		Thread.sleep(1);
 		Object request;
 		for (ActorRef actor : this.processes.references) {
 			if (actor != self()) {
