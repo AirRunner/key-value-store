@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.UUID;
+import java.lang.System;
 
 import actors.operation.*;
 import actors.operation.msg.*;
@@ -22,8 +23,9 @@ public class Process extends UntypedAbstractActor {
 	private int proposal;
 	private int value;
 	private int timestamp;
-	private State state;
 	private int ackNumber;
+	private State state;
+	private long timer;
 	private Queue<Operation> mailbox;
 
 	public Process(int ID, int nb) {
@@ -63,7 +65,8 @@ public class Process extends UntypedAbstractActor {
 			}
 			// Process GET operation
 			else if (message instanceof Get) {
-				//TODO: start timer
+				this.timer = System.nanoTime();
+				System.out.println("GET: " + System.nanoTime());
 				this.state = State.GET;
 				this.log.info("p" + self().path().name() + " is launching a get request...");
 				sendRequests(Request.READ);
@@ -71,7 +74,7 @@ public class Process extends UntypedAbstractActor {
 			}
 			// Process PUT operation
 			else if (message instanceof Put) {
-				//TODO: start timer
+				this.timer = System.nanoTime();
 				this.state = State.PUT;
 				this.proposal = ((Put) message).proposal;
 				this.log.info("p" + self().path().name() + " is launching a put request...");
@@ -97,8 +100,9 @@ public class Process extends UntypedAbstractActor {
 					this.ackNumber = 0;
 					if (this.state == State.GET) {
 						this.state = State.NONE;
-						//TODO stop timer
-						this.log.info("p" + self().path().name() + " got the value [" + this.value + "] with timestamp [" + this.timestamp + "]");
+						this.timer = System.nanoTime() - this.timer;
+						System.out.println("END GET: " + System.nanoTime());
+						this.log.info("p" + self().path().name() + " got the value [" + this.value + "] with timestamp [" + this.timestamp + "] in " + this.timer / 1000 + "μs");
 						processNext();
 					}
 					else if (this.state == State.PUT) {
@@ -126,8 +130,8 @@ public class Process extends UntypedAbstractActor {
 				if (this.ackNumber >= this.N/2) {
 					this.ackNumber = 0;
 					this.state = State.NONE;
-					//TODO: stop timer
-					this.log.info("p" + self().path().name() + " put the value [" + this.proposal + "] with timestamp [" + this.timestamp + "]");
+					this.timer = System.nanoTime() - this.timer;
+					this.log.info("p" + self().path().name() + " put the value [" + this.proposal + "] with timestamp [" + this.timestamp + "] in " + this.timer / 1000 + "μs");
 					processNext();
 				}
 			}

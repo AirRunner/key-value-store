@@ -11,8 +11,8 @@ import akka.actor.ActorSystem;
 
 public class Main {
 
-    public static int N = 10;
-    public static int M = 10;
+    public static int N = 3;
+    public static int M = 3;
 
     public static void faultyActors(ArrayList<ActorRef> r) {
         int nbFaulty = N % 2 == 0 ? (N - 1) / 2 : N / 2;
