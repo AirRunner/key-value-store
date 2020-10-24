@@ -33,3 +33,6 @@ hs_err_pid*
 
 # Eclipse
 /target/
+
+# Tests
+correctness/command.txt
