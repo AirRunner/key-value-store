@@ -12,7 +12,7 @@ def parseParams(string):
 
 def parseTime(string):
     match = re.search(r"[0-9]{4}-.*,[0-9]{3}", string)
-    return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S,%f")
+    return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S.%f")
 
 
 def parseActor(string):

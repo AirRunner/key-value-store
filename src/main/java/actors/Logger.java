@@ -9,6 +9,6 @@ public class Logger {
     public void info(String message) {
         Instant nowDate = Instant.now();
         String nowString = nowDate.toString().replace("T", " ").replace("Z", "");
-        System.out.println("[" + nowString + "] " + "[" + Level.INFO + "] – " + message);
+        System.out.println("[" + nowString + "] " + "[" + Level.INFO + "] - " + message);
     }
 }
