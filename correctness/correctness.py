@@ -1,8 +1,6 @@
 import re
+import os
 from datetime import datetime
-
-with open("logs.txt", "r", encoding="utf8") as logs:
-    lines = logs.readlines()[1:]
 
 
 def parseParams(string):
@@ -11,7 +9,7 @@ def parseParams(string):
 
 
 def parseTime(string):
-    match = re.search(r"[0-9]{4}-.*,[0-9]{3}", string)
+    match = re.search(r"[0-9]{4}-.*\.[0-9]{6}", string)
     return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S.%f")
 
 
@@ -70,8 +68,8 @@ class Operation:
     def getConcurrentsPut(self):
         concurrentsPut = []
         for x in self.history.timeline:
-            if x.operation == "put" and ((x.startTime > self.startTime and x.startTime < self.endTime)
-            or (x.endTime > self.startTime and x.endTime < self.endTime)):
+            if x.operation == "put" and ((x.startTime <= self.startTime and x.endTime > self.startTime)
+            or (x.startTime > self.startTime and x.startTime < self.endTime)):
                 concurrentsPut.append(x)
         return concurrentsPut
 
@@ -86,6 +84,7 @@ class History:
             j = 1
             while j < len(lines) and parseActor(lines[j]) != actor:
                 j += 1
+
             # Liveness check
             if j >= len(lines):
                 print("Not lively!")
@@ -117,20 +116,34 @@ class History:
 
                 # Safety check
                 if x.value not in possibleValues:
+                    print(x.value, possibleValues)
                     return False
         return True
 
 
-def main():
-    N, M = parseParams(lines[0])
-    history = History(lines[1:])
-    print(history)
-    print("Lively!")
+def exec(N, M):
+    with open("command.txt", "r", encoding="utf8") as command:
+        cmd = command.read()
 
-    if history.checkLiveness():
-        print("Safe!")
-    else:
-        print("Not safe!")
+    os.system("{} {} {} > logs.txt".format(cmd, N, M))
+
+
+def main():
+    for N in [3, 10, 100]:
+        for M in [3, 10, 100]:
+            print("Testing with N =", N, "and M =", M)
+            exec(N, M)
+            with open("logs.txt", "r", encoding="utf8") as logs:
+                lines = logs.readlines()[1:]
+            history = History(lines)
+            print("Lively!")
+
+            if history.checkLiveness():
+                print("Safe!")
+            else:
+                print("Not safe!")
+                print(history)
+                exit(1)
 
 
 if __name__ == "__main__":
