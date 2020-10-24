@@ -35,7 +35,7 @@ public class Main {
 
         // Instantiate an actor system
         final ActorSystem system = ActorSystem.create("system");
-        system.log().info("System started with N=" + N);
+        system.log().info("System started with N=" + N + " and M=" + M);
 
         ArrayList<ActorRef> references = new ArrayList<>();
 

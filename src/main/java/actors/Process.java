@@ -52,12 +52,12 @@ public class Process extends UntypedAbstractActor {
 			if (message instanceof Members) {
 				Members m = (Members) message;
 				this.processes = m;
-				this.log.info("p" + self().path().name() + " received processes info");
+				// this.log.info("p" + self().path().name() + " received processes info");
 			}
 			// Become faulty
 			else if (message instanceof Fail) {
 				this.state = State.FAULTY;
-				this.log.info("p" + self().path().name() + " became faulty");
+				// this.log.info("p" + self().path().name() + " became faulty");
 			}
 			// Add message to the mailbox
 			else if (message instanceof Operation && this.state != State.NONE) {
@@ -69,7 +69,7 @@ public class Process extends UntypedAbstractActor {
 				this.state = State.GET;
 				this.log.info("p" + self().path().name() + " is launching a get request...");
 				sendRequests(Request.READ);
-				this.log.info("p" + self().path().name() + " launched a get request");
+				// this.log.info("p" + self().path().name() + " launched a get request");
 			}
 			// Process PUT operation
 			else if (message instanceof Put) {
@@ -78,14 +78,14 @@ public class Process extends UntypedAbstractActor {
 				this.proposal = ((Put) message).proposal;
 				this.log.info("p" + self().path().name() + " is launching a put request...");
 				sendRequests(Request.READ);
-				this.log.info("p" + self().path().name() + " launched a put request");
+				// this.log.info("p" + self().path().name() + " launched a put request");
 			}
 			// Process read request
 			else if (message instanceof ReadRequest) {
 				ReadRequest rq = (ReadRequest) message;
 				ReadResponse rs = new ReadResponse(rq.seqNumber, this.value, this.timestamp);
 				sender().tell(rs, self());
-				this.log.info("p" + self().path().name() + " responded to a read request from p" + sender().path().name());
+				// this.log.info("p" + self().path().name() + " responded to a read request from p" + sender().path().name());
 			}
 			// Process read response
 			else if (message instanceof ReadResponse && (this.state == State.GET || this.state == State.PUT)) {
@@ -120,7 +120,7 @@ public class Process extends UntypedAbstractActor {
 				}
 				WriteResponse ws = new WriteResponse(wq.seqNumber);
 				sender().tell(ws, self());
-				this.log.info("p" + self().path().name() + " responded to a write request from p" + sender().path().name());
+				// this.log.info("p" + self().path().name() + " responded to a write request from p" + sender().path().name());
 			}
 			// Process write response
 			else if (message instanceof WriteResponse && this.state == State.WAIT_WRITE) {
@@ -136,7 +136,7 @@ public class Process extends UntypedAbstractActor {
 		}
 		// The process is faulty
 		else {
-			this.log.info("p" + self().path().name() + " received a message from p"+ sender().path().name() + " but is faulty");
+			// this.log.info("p" + self().path().name() + " received a message from p"+ sender().path().name() + " but is faulty");
 		}
 	}
 	
