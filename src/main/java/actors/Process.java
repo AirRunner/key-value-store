@@ -14,6 +14,7 @@ import java.lang.System;
 
 import actors.operation.*;
 import actors.operation.msg.*;
+import actors.utils.*;
 
 public class Process extends UntypedAbstractActor {
 	// private final LoggingAdapter log;   // Logger attached to actor
@@ -26,14 +27,16 @@ public class Process extends UntypedAbstractActor {
 	private int timestamp;
 	private int ackNumber;
 	private State state;
-	private long timer;
+	private long chrono;
+	private Thread restTimer;
 	private Queue<Operation> mailbox;
 
 	public Process(int ID, int nb) {
-		// this.log = Logging.getLogger(getContext().getSystem(), this);
+		// this.log = Logging.getLogger(context().system(), this);
 		this.log = new Logger();
 		this.N = nb;
 		this.id = ID;
+		this.restTimer = new Thread(new RestTimer(this));
 		this.value = 0;
 		this.timestamp = 0;
 		this.state = State.NONE;
@@ -68,7 +71,7 @@ public class Process extends UntypedAbstractActor {
 			}
 			// Process GET operation
 			else if (message instanceof Get) {
-				this.timer = System.nanoTime();
+				this.chrono = System.nanoTime();
 				this.state = State.GET;
 				this.log.info("p" + self().path().name() + " is launching a get request...");
 				sendRequests(Request.READ);
@@ -76,7 +79,7 @@ public class Process extends UntypedAbstractActor {
 			}
 			// Process PUT operation
 			else if (message instanceof Put) {
-				this.timer = System.nanoTime();
+				this.chrono = System.nanoTime();
 				this.state = State.PUT;
 				this.proposal = ((Put) message).proposal;
 				this.log.info("p" + self().path().name() + " is launching a put request...");
@@ -102,8 +105,8 @@ public class Process extends UntypedAbstractActor {
 					this.ackNumber = 0;
 					if (this.state == State.GET) {
 						this.state = State.NONE;
-						this.timer = System.nanoTime() - this.timer;
-						this.log.info("p" + self().path().name() + " got the value [" + this.value + "] with timestamp [" + this.timestamp + "] in " + this.timer / 1000 + "μs");
+						this.chrono = System.nanoTime() - this.chrono;
+						this.log.info("p" + self().path().name() + " got the value [" + this.value + "] with timestamp [" + this.timestamp + "] in " + this.chrono / 1000 + "μs");
 						processNext();
 					}
 					else if (this.state == State.PUT) {
@@ -131,8 +134,8 @@ public class Process extends UntypedAbstractActor {
 				if (this.ackNumber >= this.N/2) {
 					this.ackNumber = 0;
 					this.state = State.NONE;
-					this.timer = System.nanoTime() - this.timer;
-					this.log.info("p" + self().path().name() + " put the value [" + this.proposal + "] with timestamp [" + this.timestamp + "] in " + this.timer / 1000 + "μs");
+					this.chrono = System.nanoTime() - this.chrono;
+					this.log.info("p" + self().path().name() + " put the value [" + this.proposal + "] with timestamp [" + this.timestamp + "] in " + this.chrono / 1000 + "μs");
 					processNext();
 				}
 			}
@@ -154,10 +157,25 @@ public class Process extends UntypedAbstractActor {
 	}
 
 
+	/** Public methods **/
+	public State getState() {
+		return this.state;
+	}
+
+	public void terminate() {
+		// this.log.info("p" + self().path().name() + " is terminating...");
+		context().system().stop(self());
+	}
+
+
 	/** Private methods **/
 	private void processNext() throws Throwable {
 		if (!this.mailbox.isEmpty()) {
 			this.onReceive(this.mailbox.remove());
+		}
+		else {
+			// this.log.info("p" + self().path().name() + " is waiting for a new job...");
+			restTimer.start();
 		}
 	}
 

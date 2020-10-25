@@ -14,12 +14,15 @@ public class Main {
     public static int N = 3;
     public static int M = 3;
 
-    public static void faultyActors(ArrayList<ActorRef> r) {
+    public static ArrayList<String> faultyActors(ArrayList<ActorRef> refs) {
+        ArrayList<String> faulty = new ArrayList<>();
         int nbFaulty = N % 2 == 0 ? (N - 1) / 2 : N / 2;
-        Collections.shuffle(r);
+        Collections.shuffle(refs);
         for (int i = 0; i < nbFaulty; i++) {
-            r.get(i).tell(new Fail(), ActorRef.noSender());
+            refs.get(i).tell(new Fail(), ActorRef.noSender());
+            faulty.add(refs.get(i).path().name());
         }
+        return faulty;
     }
 
     public static void launch(ArrayList<ActorRef> r) {
@@ -29,15 +32,6 @@ public class Main {
                 actor.tell(new Get(), ActorRef.noSender());
             }
         }
-    }
-
-    public static void waitBeforeTerminate() throws InterruptedException {
-    	if (N == 100 && M == 100) {
-    		Thread.sleep(10000);
-    	}
-    	else {
-    		Thread.sleep(5000);
-    	}
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -72,18 +66,21 @@ public class Main {
         }
 
         // Begin tests
-        faultyActors(references);
+        ArrayList<String> faulty = faultyActors(references);
         launch(references);
 
-        // Wait 5 seconds before ending the program
-        try {
-            waitBeforeTerminate();
+        // Try to terminate the system
+        Boolean run = true;
+        while (run) {
+            run = false;
+            for (ActorRef actor : references) {
+                if (!actor.isTerminated() && !faulty.contains(actor.path().name())) {
+                    run = true;
+                    break;
+                }
+            }
+            Thread.sleep(100);
         }
-        catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        finally {
-            system.terminate();
-        }
+        system.terminate();
     }
 }
