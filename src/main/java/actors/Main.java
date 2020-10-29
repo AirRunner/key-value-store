@@ -28,8 +28,8 @@ public class Main {
     public static void launch(ArrayList<ActorRef> r) {
         for (ActorRef actor : r) {
             for (int i = 0; i < M; i++) {
-                actor.tell(new Put(i * N + Integer.parseInt(actor.path().name())), ActorRef.noSender());
-                actor.tell(new Get(), ActorRef.noSender());
+                actor.tell(new Put(i/2, i * N + Integer.parseInt(actor.path().name())), ActorRef.noSender());
+                actor.tell(new Get(i/2), ActorRef.noSender());
             }
         }
     }

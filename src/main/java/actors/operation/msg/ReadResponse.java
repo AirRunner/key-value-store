@@ -4,11 +4,13 @@ import java.util.UUID;
 
 public class ReadResponse {
 	public final UUID seqNumber;
+	public final int key;
 	public final int value;
 	public final int timestamp;
 	
-	public ReadResponse(UUID seqN, int v, int t) {
+	public ReadResponse(UUID seqN, int k, int v, int t) {
 		this.seqNumber = seqN;
+		this.key = k;
 		this.value = v;
 		this.timestamp = t;
 	}
