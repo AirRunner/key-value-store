@@ -1,15 +1,11 @@
 import re
 import os
 from datetime import datetime
-
-
-def parseParams(string):
-    match = re.search(r"N=([0-9]+) and M=([0-9]+)", string)
-    return int(match[1]), int(match[2])
+from statistics import median
 
 
 def parseTime(string):
-    match = re.search(r"[0-9]{4}-.*(\.|,)[0-9]{3,6}", string)
+    match = re.search(r"[0-9]{4}-.*(\.|,)[0-9]{1,6}", string)
     return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S{}%f".format(match[1]))
 
 
@@ -105,7 +101,7 @@ class History:
 
         return string
 
-    def checkLiveness(self):
+    def checkSafety(self):
         for x in self.timeline:
             if x.operation == "get":
                 possibleValues = set()
@@ -121,7 +117,20 @@ class History:
         return True
 
 
-def exec(N, M):
+def performance(timeline):
+    putDurations = []
+    getDurations = []
+
+    for x in timeline:
+        if x.operation == "put":
+            putDurations.append(x.duration)
+        else:
+            getDurations.append(x.duration)
+
+    return median(putDurations), median(getDurations)
+
+
+def launch(N, M):
     with open("command.txt", "r", encoding="utf8") as command:
         cmd = command.read()
 
@@ -132,18 +141,26 @@ def main():
     for N in [3, 10, 100]:
         for M in [3, 10, 100]:
             print("Testing with N =", N, "and M =", M)
-            exec(N, M)
+            launch(N, M)
             with open("logs.txt", "r", encoding="utf8") as logs:
                 lines = logs.readlines()[1:]
+
+            latency = (parseTime(lines[-1]) - parseTime(lines[0])).total_seconds()
             history = History(lines)
             print("Lively!")
 
-            if history.checkLiveness():
+            if history.checkSafety():
                 print("Safe!")
             else:
                 print("Not safe!")
                 print(history)
                 exit(1)
+
+            putDuration, getDuration = performance(history.timeline)
+            print("Total computation time:", latency, "sec")
+            print("Put median duration:", putDuration, "μs")
+            print("Get median duration:", getDuration, "μs")
+            print()
 
 
 if __name__ == "__main__":
