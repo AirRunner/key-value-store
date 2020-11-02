@@ -29,7 +29,7 @@ def isStarting(string):
 
 
 def parseValues(string):
-    match = re.search(r"value \[([0-9]+)\] with timestamp \[([0-9]+)\]", string)
+    match = re.search(r"value \[([0-9]+)\] .* timestamp \[([0-9]+)\]", string)
     return int(match[1]), int(match[2])
 
 

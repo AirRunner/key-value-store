@@ -112,8 +112,8 @@ public class Process extends UntypedAbstractActor {
 					if (this.state == State.GET) {
 						this.state = State.NONE;
 						this.chrono = System.nanoTime() - this.chrono;
-						this.log.info("p" + self().path().name() + " got the value [" + this.values.get(rs.key) + "] with key " +
-							rs.key + " and timestamp [" + this.timestamps.get(rs.key) + "] in " + this.chrono / 1000 + "μs");
+						this.log.info("p" + self().path().name() + " got the value [" + this.values.get(rs.key) + "] with key [" +
+							rs.key + "] and timestamp [" + this.timestamps.get(rs.key) + "] in " + this.chrono / 1000 + "μs");
 						nextOperation();
 					}
 					else if (this.state == State.PUT) {
