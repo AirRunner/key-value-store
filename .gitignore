@@ -35,5 +35,6 @@ hs_err_pid*
 /target/
 
 # Tests
+__pycache__/
 correctness/command.txt
 correctness/logs.txt
