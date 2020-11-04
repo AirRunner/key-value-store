@@ -57,7 +57,7 @@ class Operation:
     def getLastPut(self):
         lastPut = None
         for x in self.history.timeline:
-            if x.operation == "put" and (lastPut is None or (x.endTime <= self.startTime and x.endTime > lastPut.endTime)):
+            if x.operation == "put" and ((lastPut is None and x.endTime <= self.startTime) or (x.endTime <= self.startTime and x.endTime > lastPut.endTime)):
                 lastPut = x
         return lastPut
 
@@ -106,8 +106,9 @@ class History:
             if x.operation == "get":
                 possibleValues = set()
                 lastPut = x.getLastPut()
-                possibleValues.add(lastPut.value)
-                possibleValues.update([concurrent.value for concurrent in lastPut.getConcurrentsPut()])
+                if lastPut is not None:
+                    possibleValues.add(lastPut.value)
+                    possibleValues.update([concurrent.value for concurrent in lastPut.getConcurrentsPut()])
                 possibleValues.update([concurrent.value for concurrent in x.getConcurrentsPut()])
 
                 # Safety check
