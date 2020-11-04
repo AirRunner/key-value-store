@@ -3,11 +3,12 @@ package actors;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import actors.operation.Get;
-import actors.operation.Put;
-import actors.operation.Fail;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+
+import actors.operation.Fail;
+import actors.operation.Get;
+import actors.operation.Put;
 
 public class Main {
 

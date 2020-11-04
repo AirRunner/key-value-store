@@ -1,21 +1,27 @@
 package actors;
 
-import akka.actor.ActorRef;
-import akka.actor.Props;
-import akka.actor.UntypedAbstractActor;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.UUID;
-import java.lang.System;
+
+import akka.actor.ActorRef;
+import akka.actor.Props;
+import akka.actor.UntypedAbstractActor;
 // import akka.event.Logging;
 // import akka.event.LoggingAdapter;
 
-import actors.operation.*;
-import actors.operation.msg.*;
-import actors.utils.*;
+import actors.operation.Fail;
+import actors.operation.Get;
+import actors.operation.Operation;
+import actors.operation.Put;
+import actors.operation.msg.ReadRequest;
+import actors.operation.msg.ReadResponse;
+import actors.operation.msg.WriteRequest;
+import actors.operation.msg.WriteResponse;
+import actors.utils.Logger;
+import actors.utils.RestTimer;
 
 public class Process extends UntypedAbstractActor {
 	// private final LoggingAdapter log;	// Logger attached to actor
