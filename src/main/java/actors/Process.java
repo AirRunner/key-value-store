@@ -64,9 +64,9 @@ public class Process extends UntypedAbstractActor {
 	public void onReceive(Object message) throws Throwable {
 		if (this.state != State.FAULTY) {
 			/** Save the members of the system **/
-			if (message instanceof Members) {
-				Members m = (Members) message;
-				this.processes = m;
+			if (message instanceof Members && this.state == State.NONE) {
+				Members msg = (Members) message;
+				this.processes = msg;
 				// this.log.info("p" + self().path().name() + " received processes info");
 			}
 			/** Become faulty **/
@@ -78,27 +78,22 @@ public class Process extends UntypedAbstractActor {
 			else if (message instanceof Operation && this.state != State.NONE) {
 				this.mailbox.add((Operation) message);
 			}
-			/** Process GET operation **/
+			/** Process operations **/
 			else if (message instanceof Get) {
 				getReceived((Get) message);
 			}
-			/** Process PUT operation **/
 			else if (message instanceof Put) {
 				putReceived((Put) message);
 			}
-			/** Process read request **/
 			else if (message instanceof ReadRequest) {
 				readReqReceived((ReadRequest) message);
 			}
-			/** Process read response **/
 			else if (message instanceof ReadResponse && (this.state == State.GET || this.state == State.PUT)) {
 				readRespReceived((ReadResponse) message);
 			}
-			/** Process write request **/
 			else if (message instanceof WriteRequest) {
 				writeReqReceived((WriteRequest) message);
 			}
-			/** Process write response **/
 			else if (message instanceof WriteResponse && this.state == State.WAIT_WRITE) {
 				writeRespReceived((WriteResponse) message);
 			}
@@ -132,6 +127,7 @@ public class Process extends UntypedAbstractActor {
 
 
 	/** Private methods **/
+	// Process GET operation
 	private void getReceived(Get msg) throws Throwable {
 		this.chrono = System.nanoTime();
 		this.state = State.GET;
@@ -140,6 +136,7 @@ public class Process extends UntypedAbstractActor {
 		// this.log.info("p" + self().path().name() + " launched a get request with key '" + get.key);
 	}
 
+	// Process PUT operation
 	private void putReceived(Put msg) throws Throwable {
 		this.chrono = System.nanoTime();
 		this.state = State.PUT;
@@ -149,6 +146,7 @@ public class Process extends UntypedAbstractActor {
 		// this.log.info("p" + self().path().name() + " launched a put request with key " + message.key + " and proposal " + message.proposal);
 	}
 
+	// Process read request
 	private void readReqReceived(ReadRequest msg) {
 		int readValue = this.values.containsKey(msg.key) ? this.values.get(msg.key) : 0;
 		int readTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
@@ -156,7 +154,8 @@ public class Process extends UntypedAbstractActor {
 		sender().tell(rs, self());
 		// this.log.info("p" + self().path().name() + " responded to a read request from p" + sender().path().name());
 	}
-	
+
+	// Process read response
 	private void readRespReceived(ReadResponse msg) throws Throwable {
 		if (this.currSeqNumbers.contains(msg.seqNumber)) {
 			this.ackNumber++;
@@ -166,7 +165,7 @@ public class Process extends UntypedAbstractActor {
 				this.timestamps.put(msg.key, msg.timestamp);
 				this.values.put(msg.key, msg.value);
 			}
-			/** Majority **/
+			// Majority
 			if (this.ackNumber >= this.N/2) {
 				this.ackNumber = 0;
 				if (this.state == State.GET) {
@@ -187,6 +186,7 @@ public class Process extends UntypedAbstractActor {
 		}
 	}
 
+	// Process write request
 	private void writeReqReceived(WriteRequest msg) {
 		int putTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
 
@@ -199,6 +199,7 @@ public class Process extends UntypedAbstractActor {
 		// this.log.info("p" + self().path().name() + " responded to a write request from p" + sender().path().name());
 	}
 
+	// Process write response
 	private void writeRespReceived(WriteResponse msg) throws Throwable {
 		if (this.currSeqNumbers.contains(msg.seqNumber)) {
 			this.ackNumber++;
@@ -214,6 +215,7 @@ public class Process extends UntypedAbstractActor {
 		}
 	}
 
+	// Launch next operation
 	private void nextOperation() throws Throwable {
 		if (!this.mailbox.isEmpty()) {
 			this.onReceive(this.mailbox.remove());
@@ -224,6 +226,7 @@ public class Process extends UntypedAbstractActor {
 		}
 	}
 
+	// Send request to everyone
 	private void sendRequests(Request type, int key) throws InterruptedException {
 		Thread.sleep(1);
 		Object request;

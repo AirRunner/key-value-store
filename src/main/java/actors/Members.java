@@ -3,9 +3,7 @@ package actors;
 import akka.actor.ActorRef;
 import java.util.ArrayList;
 
-/**
- * Class containing the processes' references
- */
+// Class containing the processes' references
 public class Members {
 	public final ArrayList<ActorRef> references;
 	public final String data;
@@ -17,7 +15,7 @@ public class Members {
             s += a.path().name() + " ";
         }
         s += "]";    
-        data = s;
+        this.data = s;
     }
             
 }

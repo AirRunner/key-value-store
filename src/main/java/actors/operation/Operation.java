@@ -1,5 +1,3 @@
 package actors.operation;
 
-public class Operation {
-
-}
+public abstract class Operation {}
