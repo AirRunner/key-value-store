@@ -1,5 +1,6 @@
 import re
 import os
+import itertools
 from datetime import datetime
 from statistics import median
 
@@ -44,6 +45,7 @@ class Operation:
         self.endTime = end
         self.duration = dur
         self.history = hist
+        self.concurrentsPut = []
 
     def __str__(self):
         return "p" + str(self.process) + " " + \
@@ -68,6 +70,14 @@ class Operation:
             or (x.startTime > self.startTime and x.startTime < self.endTime)):
                 concurrentsPut.append(x)
         return concurrentsPut
+
+    def newOldInversion(self):
+        for x in self.history.timeline:
+            if x.operation == "get" and x.endTime < self.startTime:
+                for pair in itertools.product(self.concurrentsPut, x.concurrentsPut):
+                    if pair[0] == pair[1] and pair[0].value == x.value:
+                        return True
+        return False
 
 
 class History:
@@ -94,6 +104,9 @@ class History:
             lines.pop(j)
             lines.pop(0)
 
+        for x in self.timeline:
+            x.concurrentsPut = x.getConcurrentsPut()
+
     def __str__(self):
         string = ""
         for x in self.timeline:
@@ -106,10 +119,12 @@ class History:
             if x.operation == "get":
                 possibleValues = set()
                 lastPut = x.getLastPut()
-                if lastPut is not None:
+
+                possibleValues.update([conc.value for conc in x.concurrentsPut])
+
+                if lastPut is not None and not x.newOldInversion():
                     possibleValues.add(lastPut.value)
-                    possibleValues.update([concurrent.value for concurrent in lastPut.getConcurrentsPut()])
-                possibleValues.update([concurrent.value for concurrent in x.getConcurrentsPut()])
+                    possibleValues.update([conc.value for conc in lastPut.concurrentsPut])
 
                 # Safety check
                 if x.value not in possibleValues:
