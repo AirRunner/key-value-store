@@ -6,7 +6,7 @@ line2 = "[2020-11-04 12:31:01.447535900] [INFO] - p2 got the value [5] with key 
 
 with open("test_log1.txt", "r", encoding="utf8") as log1:
     lines1 = log1.readlines()
-with open("test_log1.txt", "r", encoding="utf8") as log2:
+with open("test_log2.txt", "r", encoding="utf8") as log2:
     lines2 = log2.readlines()
 
 history1 = cor.History(lines1)
@@ -47,9 +47,9 @@ def test_getLastPut():
     assert history1.timeline[1].getLastPut() is None
 
 
-def test_getConcurrentsPut():
-    assert history1.timeline[1].getConcurrentsPut() == [history1.timeline[0], history1.timeline[2]]
-    assert history1.timeline[4].getConcurrentsPut() == []
+def test_getConcurrents():
+    assert history1.timeline[1].getConcurrents("put") == [history1.timeline[0], history1.timeline[2]]
+    assert history1.timeline[4].getConcurrents("put") == []
 
 
 def test_checkSafety():
