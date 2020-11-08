@@ -1,0 +1,15 @@
+*** v1 ***
+144,98s user 3,05s system 103% cpu 2:23,60 total
+145,59s user 3,28s system 102% cpu 2:25,04 total
+
+*** v1-bis ***
+70,73s user 2,58s system 106% cpu 1:08,92 total
+71,73s user 2,62s system 106% cpu 1:09,71 total
+
+*** v2 ***
+32,20s user 2,34s system 114% cpu 30,246 total
+34,91s user 2,38s system 122% cpu 30,524 total
+
+*** v3 ***
+28,39s user 2,34s system 119% cpu 25,738 total
+28,38s user 2,30s system 121% cpu 25,330 total
