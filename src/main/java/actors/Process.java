@@ -29,7 +29,7 @@ public class Process extends UntypedAbstractActor {
 	private Queue<Operation> mailbox;				// Mailbox for pending message
 	private HashMap<Integer, Integer> values;		// key-value map
 	private HashMap<Integer, Integer> timestamps;	// key-timestamp map
-	private ArrayList<UUID> currSeqNumbers;			// Sequence number of current message
+	private UUID seqNumber;							// Sequence number of current message
 	private State state;							// Current process' state
 	private int ackNumber;							// Number of acknowledgements for current message
 	private int proposal;							// Current PUT request proposal
@@ -45,7 +45,6 @@ public class Process extends UntypedAbstractActor {
 		this.mailbox = new LinkedList<>();
 		this.values = new HashMap<>();
 		this.timestamps = new HashMap<>();
-		this.currSeqNumbers = new ArrayList<>();
 		this.state = State.NONE;		
 		this.ackNumber = 0;
 		this.gotValue = null;
@@ -172,7 +171,7 @@ public class Process extends UntypedAbstractActor {
 
 	// Process read response
 	private void readRespReceived(ReadResponse msg) throws Throwable {
-		if (this.currSeqNumbers.contains(msg.seqNumber)) {
+		if (this.seqNumber == msg.seqNumber) {
 			this.ackNumber++;
 			if (msg.value != null && (this.gotValue == null ||
 				msg.timestamp > this.gotTimestamp || (msg.timestamp == this.gotTimestamp && msg.value > this.gotValue))) {
@@ -221,7 +220,7 @@ public class Process extends UntypedAbstractActor {
 
 	// Process write response
 	private void writeRespReceived(WriteResponse msg) throws Throwable {
-		if (this.currSeqNumbers.contains(msg.seqNumber)) {
+		if (this.seqNumber == msg.seqNumber) {
 			this.ackNumber++;
 			// Majority
 			if (this.ackNumber >= this.N/2) {
@@ -251,17 +250,14 @@ public class Process extends UntypedAbstractActor {
 	private void sendRequests(Request type, int key) throws InterruptedException {
 		Thread.sleep(1);
 		Object request;
-		UUID newSeqNumber;
-		this.currSeqNumbers.clear();
+		this.seqNumber = UUID.randomUUID();
 		for (ActorRef actor : this.processes.references) {
 			if (actor != self()) {
-				newSeqNumber = UUID.randomUUID();
-				this.currSeqNumbers.add(newSeqNumber);
 				if (type == Request.WRITE) {
-					request = (WriteRequest) new WriteRequest(newSeqNumber, key, this.values.get(key), this.timestamps.get(key));
+					request = (WriteRequest) new WriteRequest(this.seqNumber, key, this.values.get(key), this.timestamps.get(key));
 				}
 				else {
-					request = (ReadRequest) new ReadRequest(newSeqNumber, key);
+					request = (ReadRequest) new ReadRequest(this.seqNumber, key);
 				}
 				actor.tell(request, self());
 			}
