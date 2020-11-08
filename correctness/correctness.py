@@ -4,8 +4,13 @@ from datetime import datetime
 from statistics import median
 
 
+## Parsers
+
 def parseTime(string):
     match = re.search(r"[0-9]{4}-.*(\.|,)[0-9]{1,6}", string)
+    if match is None:
+        match = re.search(r"[0-9]{4}-.*:[0-9]{2}", string)
+        return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S")
     return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S{}%f".format(match[1]))
 
 
@@ -33,6 +38,8 @@ def parseChrono(string):
     match = re.search(r"([0-9]+)μs", string)
     return int(match[1])
 
+
+## Classes
 
 class Operation:
     def __init__(self, p, op, val, t, start, end, dur, hist):
@@ -133,6 +140,8 @@ class History:
                     return False
         return True
 
+
+## Execution functions
 
 def performance(timeline):
     putDurations = []
