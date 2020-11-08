@@ -68,7 +68,7 @@ The two possible operations are `GET` and `PUT`, and run as follows:
 
 A `Get` message only contains the requested key.
 
-When launching a `GET` request, the process passes to `GET` state and just sends `Read` requests to all other processes.  
+When launching a `GET` request, the process passes to `GET` state and just sends `Read` requests to all other processes.
 A read request is sent with the key as well as a sequence number, in order to recognise corresponding responses.
 
 ##### 1.2.1.2 Put
@@ -135,3 +135,152 @@ Finally, the process sends a confirmation `Write` response, only containing the 
 As explained, a `Write` response contains the sequence number of the initial request and the key.
 
 When receiving a `Write` response, the process only has to check the number of acknowledgements. If the majority of the processes in the system responded ($\geqslant \frac N2$), the `PUT` operation is done and the process can pass to next one in the mailbox.
+
+
+## 2. Proof of correctness
+
+### 2.1. Correctness
+
+Before making a proof of correctness, we need to define what is correctness. We can say that an execution is correct when it satisfies 2 properties: liveness and safety. Let's see the signification of these properties.
+
+#### 2.1.1. Liveness
+
+The first one, liveness, insures that every operation invoked eventually returns. So every started operation must finish some time after.
+
+Here is an exemple of an execution that respects liveness:
+![](draft-diagrams/1.png)
+
+On the contrary, the get operation never ends in the below diagram. This execution does not respect liveness:
+![](draft-diagrams/2.png)
+
+#### 2.1.2. Safety
+
+Then, safety insures that the history of the execution is linearizable. That is to say that operations can be totally ordered, preserving legality and precedence. For example, if read1 returns v and read2 returns v', and read1 precedes read2, then write(v') cannot precede write(v).
+
+Here is the history of a safe execution:
+![](draft-diagrams/3.png)
+
+On the contrary, the next history does not represent a safe execution due to new-old inversion:
+![](draft-diagrams/4.png)
+
+### 2.2. How we check correctness
+
+To check the correctness of our implementation, we execute our program nine times with the combination of these parameters: N = 3, 10, 100 and M = 3, 10, 100. For each instance, we print the logs to a text file and analyze them with a Python program we made.
+
+All the steps are automated:
+
+1. The program launches one by one the nine instances with different N and M parameter values. To perform this, it executes the Java program with the corresponding command line arguments (N and M values). The output is redirected to a text file.
+2. Then, it reads the text file created (which contains the logs) during the execution.
+3. From there, the history of the execution is created by parsing the logs and storing the results in objects (operation and history classes). Liveness is verified during this phase. If each operation launched terminates, the execution is lively.
+4. After that, we verify if the execution is safety. To perform this, we verify for each get that its return value is either the one of the last put or the one of a concurrent put and that a new-old inversion didn't happen.
+5. If liveness and safety are respected, the execution is correct and we display the performance data. We will study that in the next part.
+
+### 2.3. Output
+
+When launching our Python program, we get an output of this form:
+
+    $ py correctness.py
+    Testing with N = 3 and M = 3
+    Lively!
+    Safe!
+    Total computation time: 0.029564 sec
+    Put median duration: 1260.5 μs
+    Get median duration: 482.0 μs
+
+    Testing with N = 3 and M = 10
+    Lively!
+    Safe!
+    Total computation time: 0.032373 sec
+    Put median duration: 640.0 μs
+    Get median duration: 233.5 μs
+
+    Testing with N = 3 and M = 100
+    Lively!
+    Safe!
+    Total computation time: 0.132201 sec
+    Put median duration: 193.0 μs
+    Get median duration: 106.0 μs
+
+    Testing with N = 10 and M = 3
+    Lively!
+    Safe!
+    Total computation time: 0.030162 sec
+    Put median duration: 2372.0 μs
+    Get median duration: 1485.5 μs
+
+    Testing with N = 10 and M = 10
+    Lively!
+    Safe!
+    Total computation time: 0.06442 sec
+    Put median duration: 2303.5 μs
+    Get median duration: 1096.0 μs
+
+    Testing with N = 10 and M = 100
+    Lively!
+    Safe!
+    Total computation time: 0.209297 sec
+    Put median duration: 867.0 μs
+    Get median duration: 442.0 μs
+
+    Testing with N = 100 and M = 3
+    Lively!
+    Safe!
+    Total computation time: 0.190535 sec
+    Put median duration: 21983 μs
+    Get median duration: 11605 μs
+
+    Testing with N = 100 and M = 10
+    Lively!
+    Safe!
+    Total computation time: 0.325907 sec
+    Put median duration: 17072.5 μs
+    Get median duration: 7837.5 μs
+
+    Testing with N = 100 and M = 100
+    Lively!
+    Safe!
+    Total computation time: 1.095113 sec
+    Put median duration: 5313.5 μs
+    Get median duration: 2617.5 μs
+
+We can see that our implementation is correct for every N and M combination.
+
+
+## 3. Performance analysis
+
+### 3.1. How we measure durations
+
+
+
+### 3.2. Results and analysis
+
+- Total computation time (in sec)
+
+|N\M|3       |10      |100     |
+|-  |-       |-       |-       |
+|3  |0.029564|0.032373|0.132201|
+|10 |0.030162|0.064420|0.209297|
+|100|0.190535|0.325907|1.095113|
+
+As we can see, the total computation time increases as N increases and also as M increases. This seems reasonable.
+Moreover, our program has a very low latency: the highest computation time is only about a second.
+
+- Put median duration (in μs)
+
+|N\M|3      |10     |100   |
+|-  |-      |-      |-     |
+|3  |1260.5 |640.0  |193.0 |
+|10 |2372.0 |2303.5 |867.0 |
+|100|21983.0|17072.5|5313.5|
+
+For the put median duration, we remark that it increases when N increases but it decreases as M increases. This can be explained by the fact that operations are performed faster and faster as the execution is going on.
+
+- Get median duration (in μs)
+
+|N\M|3      |10     |100   |
+|-  |-      |-      |-     |
+|3  |482.0  |233.5  |106.0 |
+|10 |1485.5 |1096.0 |442.0 |
+|100|11605.0|7837.5 |2617.5|
+
+For the get median duration, we can make the same observations as for the put median duration. The difference is that the median duration is smaller for get operations. Indeed, it only reads through other processes to get the value. A put operation reads through other processes to get the maximum timestamp and then write the new value to all. So it is reasonable to see this difference.
