@@ -47,9 +47,9 @@ def test_getLastPut():
     assert history1.timeline[1].getLastPut() is None
 
 
-def test_getConcurrentsPut():
-    assert history1.timeline[1].getConcurrentsPut() == [history1.timeline[0], history1.timeline[2]]
-    assert history1.timeline[4].getConcurrentsPut() == []
+def test_getConcurrents():
+    assert history1.timeline[1].getConcurrents("put") == [history1.timeline[0], history1.timeline[2]]
+    assert history1.timeline[4].getConcurrents("put") == []
 
 
 def test_checkSafety():
