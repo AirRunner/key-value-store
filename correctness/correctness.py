@@ -1,6 +1,5 @@
 import re
 import os
-import itertools
 from datetime import datetime
 from statistics import median
 
