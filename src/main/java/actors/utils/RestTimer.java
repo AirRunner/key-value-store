@@ -18,9 +18,8 @@ public class RestTimer implements Runnable {
             try {
                 Thread.sleep(10);
             }
-            catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            catch (InterruptedException e) {}
+            
             if (proc.getState() != State.NONE) {
                 break;
             }

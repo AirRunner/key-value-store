@@ -12,10 +12,10 @@ import actors.operation.Put;
 
 public class Main {
 
-    public static int N = 3;
-    public static int M = 3;
+    private static int N = 3;
+    private static int M = 3;
 
-    public static ArrayList<String> faultyActors(ArrayList<ActorRef> refs) {
+    private static ArrayList<String> faultyActors(ArrayList<ActorRef> refs) {
         ArrayList<String> faulty = new ArrayList<>();
         int nbFaulty = N % 2 == 0 ? (N - 1) / 2 : N / 2;
         Collections.shuffle(refs);
@@ -26,7 +26,7 @@ public class Main {
         return faulty;
     }
 
-    public static void launch(ArrayList<ActorRef> r) {
+    private static void launch(ArrayList<ActorRef> r) {
         for (ActorRef actor : r) {
             for (int i = 0; i < M; i++) {
                 actor.tell(new Put(1, i * N + Integer.parseInt(actor.path().name())), ActorRef.noSender());
@@ -36,6 +36,8 @@ public class Main {
     }
 
     public static void main(String[] args) throws InterruptedException {
+
+        /* Initialisation */
 
         // Instantiate an actor system
         final ActorSystem system = ActorSystem.create("system");
@@ -52,11 +54,14 @@ public class Main {
             system.log().warning("Invalid arguments. Setting N=3, M=3.");
         }
 
+
+        /* Actors creation */
+
         ArrayList<ActorRef> references = new ArrayList<>();
 
         for (int i = 0; i < N; i++) {
             // Instantiate processes
-            final ActorRef a = system.actorOf(Process.createActor(i + 1, N), "" + i);
+            final ActorRef a = system.actorOf(Process.createActor(i + 1, N, false), "" + i);
             references.add(a);
         }
 
@@ -65,6 +70,9 @@ public class Main {
         for (ActorRef actor : references) {
             actor.tell(m, ActorRef.noSender());
         }
+
+
+        /* Launching */
 
         // Begin tests
         ArrayList<String> faulty = faultyActors(references);

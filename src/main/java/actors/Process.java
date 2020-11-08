@@ -9,8 +9,6 @@ import java.util.UUID;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.actor.UntypedAbstractActor;
-// import akka.event.Logging;
-// import akka.event.LoggingAdapter;
 
 import actors.operation.Fail;
 import actors.operation.Get;
@@ -24,33 +22,42 @@ import actors.utils.Logger;
 import actors.utils.RestTimer;
 
 public class Process extends UntypedAbstractActor {
-	// private final LoggingAdapter log;	// Logger attached to actor
-	private Logger log;
-	private final int N;					// Number of processes
-	private final int id;					// ID of current process
-	private Members processes;				// other processes' references
-	private Queue<Operation> mailbox;
-	private HashMap<Integer, Integer> values;
-	private HashMap<Integer, Integer> timestamps;
-	private State state;
-	private Thread restTimer;
-	private long chrono;
-	private int proposal;
-	private ArrayList<UUID> currSeqNumbers;
-	private int ackNumber;
+	private Logger log;								// Logger attached to actor
+	private final int N;							// Number of processes
+	private final int id;							// ID of current process
+	private Members processes;						// Other processes' references
+	private Queue<Operation> mailbox;				// Mailbox for pending message
+	private HashMap<Integer, Integer> values;		// key-value map
+	private HashMap<Integer, Integer> timestamps;	// key-timestamp map
+	private ArrayList<UUID> currSeqNumbers;			// Sequence number of current message
+	private State state;							// Current process' state
+	private int ackNumber;							// Number of acknowledgements for current message
+	private int proposal;							// Current PUT request proposal
+	private Integer gotValue;						// Value got by GET request
+	private Integer gotTimestamp;					// Timestamp got by GET request
+	private Thread restTimer;						// Timer for process' rest time
+	private long chrono;							// Timer for process' operations
 
 	public Process(int ID, int nb) {
-		// this.log = Logging.getLogger(context().system(), this);
 		this.log = new Logger();
 		this.N = nb;
 		this.id = ID;
 		this.mailbox = new LinkedList<>();
 		this.values = new HashMap<>();
 		this.timestamps = new HashMap<>();
-		this.state = State.NONE;
-		this.restTimer = new Thread(new RestTimer(this));
 		this.currSeqNumbers = new ArrayList<>();
+		this.state = State.NONE;		
 		this.ackNumber = 0;
+		this.gotValue = null;
+		this.gotTimestamp = null;
+		this.restTimer = new Thread(new RestTimer(this));
+	}
+
+	/** Static actor creation **/
+	public static Props createActor(int ID, int nb, boolean logAll) {
+		return Props.create(Process.class, () -> {
+			return new Process(ID, nb, logAll);
+		});
 	}
 
 	public String toString() {
@@ -67,12 +74,12 @@ public class Process extends UntypedAbstractActor {
 			if (message instanceof Members && this.state == State.NONE) {
 				Members msg = (Members) message;
 				this.processes = msg;
-				// this.log.info("p" + self().path().name() + " received processes info");
+				this.log.info("p" + self().path().name() + " received processes info");
 			}
 			/** Become faulty **/
 			else if (message instanceof Fail) {
 				this.state = State.FAULTY;
-				// this.log.info("p" + self().path().name() + " became faulty");
+				this.log.info("p" + self().path().name() + " became faulty");
 			}
 			/** Add message to the mailbox **/
 			else if (message instanceof Operation && this.state != State.NONE) {
@@ -100,7 +107,7 @@ public class Process extends UntypedAbstractActor {
 		}
 		/** The process is faulty **/
 		else {
-			// this.log.info("p" + self().path().name() + " received a message from p"+ sender().path().name() + " but is faulty");
+			this.log.info("p" + self().path().name() + " received a message from p"+ sender().path().name() + " but is faulty");
 		}
 	}
 	
@@ -121,7 +128,7 @@ public class Process extends UntypedAbstractActor {
 	}
 
 	public void terminate() {
-		// this.log.info("p" + self().path().name() + " is terminating...");
+		this.log.info("p" + self().path().name() + " is terminating...");
 		context().system().stop(self());
 	}
 
@@ -129,56 +136,71 @@ public class Process extends UntypedAbstractActor {
 	/** Private methods **/
 	// Process GET operation
 	private void getReceived(Get msg) throws Throwable {
-		this.chrono = System.nanoTime();
 		this.state = State.GET;
-		this.log.info("p" + self().path().name() + " is launching a get request with key " + msg.key + "...");
+		this.log.important("p" + self().path().name() + " is launching a get request with key " + msg.key + "...");
+		this.chrono = System.nanoTime();
 		sendRequests(Request.READ, msg.key);
-		// this.log.info("p" + self().path().name() + " launched a get request with key '" + get.key);
+		this.log.info("p" + self().path().name() + " launched a get request with key '" + msg.key);
 	}
 
 	// Process PUT operation
 	private void putReceived(Put msg) throws Throwable {
-		this.chrono = System.nanoTime();
+		
 		this.state = State.PUT;
 		this.proposal = msg.proposal;
-		this.log.info("p" + self().path().name() + " is launching a put request with key " + msg.key + " and proposal " + msg.proposal + "...");
+		
+		this.log.important("p" + self().path().name() + " is launching a put request with key " + msg.key + " and proposal " + msg.proposal + "...");
+		this.chrono = System.nanoTime();
 		sendRequests(Request.READ, msg.key);
-		// this.log.info("p" + self().path().name() + " launched a put request with key " + message.key + " and proposal " + message.proposal);
+		this.log.info("p" + self().path().name() + " launched a put request with key " + msg.key + " and proposal " + msg.proposal);
 	}
 
 	// Process read request
 	private void readReqReceived(ReadRequest msg) {
-		int readValue = this.values.containsKey(msg.key) ? this.values.get(msg.key) : 0;
-		int readTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
-		ReadResponse rs = new ReadResponse(msg.seqNumber, msg.key, readValue, readTimestamp);
+		ReadResponse rs;
+		if (this.values.containsKey(msg.key)) {
+			int localValue = this.values.get(msg.key);
+			int localTimestamp = this.timestamps.get(msg.key);
+			rs = new ReadResponse(msg.seqNumber, msg.key, localValue, localTimestamp);
+		}
+		else {
+			rs = new ReadResponse(msg.seqNumber, msg.key, null, null);
+		}
 		sender().tell(rs, self());
-		// this.log.info("p" + self().path().name() + " responded to a read request from p" + sender().path().name());
+		this.log.info("p" + self().path().name() + " responded to a read request from p" + sender().path().name());
 	}
 
 	// Process read response
 	private void readRespReceived(ReadResponse msg) throws Throwable {
 		if (this.currSeqNumbers.contains(msg.seqNumber)) {
 			this.ackNumber++;
-			int readTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
-			int readValue = this.values.containsKey(msg.key) ? this.values.get(msg.key) : 0;
-			if (msg.timestamp > readTimestamp || (msg.timestamp == readTimestamp && msg.value > readValue)) {
-				this.timestamps.put(msg.key, msg.timestamp);
-				this.values.put(msg.key, msg.value);
+			if (msg.value != null && (this.gotValue == null ||
+				msg.timestamp > this.gotTimestamp || (msg.timestamp == this.gotTimestamp && msg.value > this.gotValue))) {
+				this.gotValue = msg.value;
+				this.gotTimestamp = msg.timestamp;
 			}
 			// Majority
 			if (this.ackNumber >= this.N/2) {
 				this.ackNumber = 0;
 				if (this.state == State.GET) {
+					if (this.gotValue != null) {
+						this.chrono = System.nanoTime() - this.chrono;
+						this.log.important("p" + self().path().name() + " got the value [" + this.gotValue + "] with key [" +
+							msg.key + "] and timestamp [" + this.gotTimestamp + "] in " + this.chrono / 1000 + "μs");
+						this.gotValue = this.gotTimestamp = null;
+					}
+					else {
+						this.log.important("p" + self().path().name() + " failed to get a value for key " + msg.key);
+					}
 					this.state = State.NONE;
-					this.chrono = System.nanoTime() - this.chrono;
-					this.log.info("p" + self().path().name() + " got the value [" + this.values.get(msg.key) + "] with key [" +
-						msg.key + "] and timestamp [" + this.timestamps.get(msg.key) + "] in " + this.chrono / 1000 + "μs");
 					nextOperation();
 				}
 				else if (this.state == State.PUT) {
-					readTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
-					this.timestamps.put(msg.key, readTimestamp + 1);
-					this.values.put(msg.key, this.proposal);
+					Integer putTimestamp = this.gotTimestamp;
+					if (putTimestamp == null) {
+						putTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
+					}
+					putProposal(msg.key, this.proposal, putTimestamp + 1);
 					this.state = State.WAIT_WRITE;
 					sendRequests(Request.WRITE, msg.key);
 				}
@@ -188,27 +210,25 @@ public class Process extends UntypedAbstractActor {
 
 	// Process write request
 	private void writeReqReceived(WriteRequest msg) {
-		int putTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
-
-		if (msg.timestamp > putTimestamp || (msg.timestamp == putTimestamp && msg.proposal > this.values.get(msg.key))) {
-			this.timestamps.put(msg.key, msg.timestamp);
-			this.values.put(msg.key, msg.proposal);
+		if (!this.values.containsKey(msg.key) || msg.timestamp > this.timestamps.get(msg.key) ||
+			(msg.timestamp == this.timestamps.get(msg.key) && msg.proposal > this.values.get(msg.key))) {
+			putProposal(msg.key, msg.proposal, msg.timestamp);
 		}
 		WriteResponse ws = new WriteResponse(msg.seqNumber, msg.key);
 		sender().tell(ws, self());
-		// this.log.info("p" + self().path().name() + " responded to a write request from p" + sender().path().name());
+		this.log.info("p" + self().path().name() + " responded to a write request from p" + sender().path().name());
 	}
 
 	// Process write response
 	private void writeRespReceived(WriteResponse msg) throws Throwable {
 		if (this.currSeqNumbers.contains(msg.seqNumber)) {
 			this.ackNumber++;
-			/** Majority **/
+			// Majority
 			if (this.ackNumber >= this.N/2) {
+				this.chrono = System.nanoTime() - this.chrono;
 				this.ackNumber = 0;
 				this.state = State.NONE;
-				this.chrono = System.nanoTime() - this.chrono;
-				this.log.info("p" + self().path().name() + " put the value [" + this.proposal + "] with key [" + msg.key +
+				this.log.important("p" + self().path().name() + " put the value [" + this.proposal + "] with key [" + msg.key +
 					"] and timestamp [" + this.timestamps.get(msg.key) + "] in " + this.chrono / 1000 + "μs");
 				nextOperation();
 			}
@@ -221,7 +241,8 @@ public class Process extends UntypedAbstractActor {
 			this.onReceive(this.mailbox.remove());
 		}
 		else {
-			// this.log.info("p" + self().path().name() + " is waiting for a new job...");
+			this.log.info("p" + self().path().name() + " is waiting for a new job...");
+			restTimer.interrupt();
 			restTimer.start();
 		}
 	}
@@ -247,10 +268,9 @@ public class Process extends UntypedAbstractActor {
 		}
 	}
 
-	/** Static actor creation **/
-	public static Props createActor(int ID, int nb) {
-		return Props.create(Process.class, () -> {
-			return new Process(ID, nb);
-		});
+	// Ensure that both values and timestamp are put
+	private void putProposal(int key, int proposal, int timestamp) {
+		this.values.put(key, proposal);
+		this.timestamps.put(key, timestamp);
 	}
 }
