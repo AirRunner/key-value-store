@@ -46,7 +46,6 @@ class Operation:
         self.duration = dur
         self.history = hist
         self.concurrentsPut = []
-        self.concurrentsGet = []
 
     def __str__(self):
         return "p" + str(self.process) + " " + \
@@ -64,19 +63,21 @@ class Operation:
                 lastPut = x
         return lastPut
 
-    def getConcurrents(self, op):
-        concurrents = []
+    def getConcurrentsPut(self):
+        concurrentsPut = []
         for x in self.history.timeline:
-            if x.operation == op and ((x.startTime <= self.startTime and x.endTime > self.startTime)
+            if x.operation == "put" and ((x.startTime <= self.startTime and x.endTime > self.startTime)
             or (x.startTime > self.startTime and x.startTime < self.endTime)):
-                concurrents.append(x)
-        return concurrents
+                concurrentsPut.append(x)
+        return concurrentsPut
 
     def newOldInversion(self):
-        for x in self.concurrentsPut:
-            for get in x.concurrentsGet:
-                if get.endTime < self.startTime and get.value == x.value:
-                    return True
+        for x in self.history.timeline:
+            if x.operation == "get" and x.endTime < self.startTime:
+                for y in self.concurrentsPut:
+                    for z in x.concurrentsPut:
+                        if y == z and y.value == x.value:
+                            return True
         return False
 
 
@@ -105,9 +106,7 @@ class History:
             lines.pop(0)
 
         for x in self.timeline:
-            x.concurrentsPut = x.getConcurrents("put")
-            if x.operation == "put":
-                x.concurrentsGet = x.getConcurrents("get")
+            x.concurrentsPut = x.getConcurrentsPut()
 
     def __str__(self):
         string = ""
