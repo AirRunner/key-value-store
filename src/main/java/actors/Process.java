@@ -33,8 +33,6 @@ public class Process extends UntypedAbstractActor {
 	private State state;							// Current process' state
 	private int ackNumber;							// Number of acknowledgements for current message
 	private int proposal;							// Current PUT request proposal
-	private Integer gotValue;						// Value got by GET request
-	private Integer gotTimestamp;					// Timestamp got by GET request
 	private Thread restTimer;						// Timer for process' rest time
 	private long chrono;							// Timer for process' operations
 
@@ -47,8 +45,6 @@ public class Process extends UntypedAbstractActor {
 		this.timestamps = new HashMap<>();
 		this.state = State.NONE;		
 		this.ackNumber = 0;
-		this.gotValue = null;
-		this.gotTimestamp = null;
 		this.restTimer = new Thread(new RestTimer(this));
 	}
 
@@ -173,20 +169,20 @@ public class Process extends UntypedAbstractActor {
 	private void readRespReceived(ReadResponse msg) throws Throwable {
 		if (this.seqNumber == msg.seqNumber) {
 			this.ackNumber++;
-			if (msg.value != null && (this.gotValue == null ||
-				msg.timestamp > this.gotTimestamp || (msg.timestamp == this.gotTimestamp && msg.value > this.gotValue))) {
-				this.gotValue = msg.value;
-				this.gotTimestamp = msg.timestamp;
+			Integer localValue = this.values.containsKey(msg.key) ? this.values.get(msg.key) : null;
+			Integer localTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : null;
+			if (msg.value != null && (localValue == null ||
+				msg.timestamp > localTimestamp || (msg.timestamp == localTimestamp && msg.value > localValue))) {
+				putValue(msg.key, msg.value, msg.timestamp);
 			}
 			// Majority
 			if (this.ackNumber >= this.N/2) {
 				this.ackNumber = 0;
 				if (this.state == State.GET) {
-					if (this.gotValue != null) {
+					if (this.values.containsKey(msg.key)) {
 						this.chrono = System.nanoTime() - this.chrono;
-						this.log.important("p" + self().path().name() + " got the value [" + this.gotValue + "] with key [" +
-							msg.key + "] and timestamp [" + this.gotTimestamp + "] in " + this.chrono / 1000 + "μs");
-						this.gotValue = this.gotTimestamp = null;
+						this.log.important("p" + self().path().name() + " got the value [" + this.values.get(msg.key) + "] with key [" +
+							msg.key + "] and timestamp [" + this.timestamps.get(msg.key) + "] in " + this.chrono / 1000 + "μs");
 					}
 					else {
 						this.log.important("p" + self().path().name() + " failed to get a value for key " + msg.key);
@@ -195,11 +191,11 @@ public class Process extends UntypedAbstractActor {
 					nextOperation();
 				}
 				else if (this.state == State.PUT) {
-					Integer putTimestamp = this.gotTimestamp;
+					Integer putTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : null;
 					if (putTimestamp == null) {
 						putTimestamp = this.timestamps.containsKey(msg.key) ? this.timestamps.get(msg.key) : 0;
 					}
-					putProposal(msg.key, this.proposal, putTimestamp + 1);
+					putValue(msg.key, this.proposal, putTimestamp + 1);
 					this.state = State.WAIT_WRITE;
 					sendRequests(Request.WRITE, msg.key);
 				}
@@ -211,7 +207,7 @@ public class Process extends UntypedAbstractActor {
 	private void writeReqReceived(WriteRequest msg) {
 		if (!this.values.containsKey(msg.key) || msg.timestamp > this.timestamps.get(msg.key) ||
 			(msg.timestamp == this.timestamps.get(msg.key) && msg.proposal > this.values.get(msg.key))) {
-			putProposal(msg.key, msg.proposal, msg.timestamp);
+			putValue(msg.key, msg.proposal, msg.timestamp);
 		}
 		WriteResponse ws = new WriteResponse(msg.seqNumber, msg.key);
 		sender().tell(ws, self());
@@ -265,7 +261,7 @@ public class Process extends UntypedAbstractActor {
 	}
 
 	// Ensure that both values and timestamp are put
-	private void putProposal(int key, int proposal, int timestamp) {
+	private void putValue(int key, int proposal, int timestamp) {
 		this.values.put(key, proposal);
 		this.timestamps.put(key, timestamp);
 	}
