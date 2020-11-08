@@ -38,8 +38,8 @@ public class Process extends UntypedAbstractActor {
 	private Thread restTimer;						// Timer for process' rest time
 	private long chrono;							// Timer for process' operations
 
-	public Process(int ID, int nb) {
-		this.log = new Logger();
+	public Process(int ID, int nb, boolean logAll) {
+		this.log = new Logger(logAll);
 		this.N = nb;
 		this.id = ID;
 		this.mailbox = new LinkedList<>();
