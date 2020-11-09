@@ -1,4 +1,4 @@
-# Key-Value Store with akka actor model
+# Key-Value Store with Akka actor model
 
 ## 1. Description of the system
 
@@ -309,6 +309,8 @@ Moreover, our program has a very low latency: the highest computation time is on
 |100 |21983.0|17072.5|5313.5|
 
 For the put median duration, we remark that it increases when N increases but it decreases as M increases. Indeed, if the number of actors is bigger, it takes more time to send read/write requests to all other actors and wait for their answer. For M, it can be explained by the fact that operations are performed faster and faster as the execution is going on.
+
+\pagebreak
 
 - Get median duration (in $\mu$s)
 

@@ -243,7 +243,7 @@ public class Process extends UntypedAbstractActor {
 
 	// Send request to everyone
 	private void sendRequests(Request type, int key) throws InterruptedException {
-		Thread.sleep(1);
+		Thread.sleep(1);	// Wait 1 ms so that log times clearly show operations durations
 		Object request;
 		this.seqNumber = UUID.randomUUID();
 		for (ActorRef actor : this.processes.references) {
