@@ -182,19 +182,25 @@ On the contrary, the next history does not represent a safe execution due to new
 
 ### 2.2. How we check correctness
 
-To check the correctness of our implementation, we execute our program nine times with the combination of these parameters: N = 3, 10, 100 and M = 3, 10, 100. For each instance, we print the logs to a text file and analyze them with a Python program we made.
+#### 2.2.1. Our Python program
 
-All the steps are automated:
+To check the correctness of our implementation, we made a Python program to analyze the output of our Java program. Its structure is as follows:
 
-1. The program launches one by one the nine instances with different N and M parameter values. To perform this, it executes the Java program with the corresponding command line arguments (N and M values). The output is redirected to a text file.
+- Functions to parse the lines of the logs using regular expressions. It collects information about the time, the actor, the operation, whether the operation is starting or ending, the value and timestamp and the chrono (execution time of the operation).
+- Classes to store operation and history objects. They contain methods to perform correctness check.
+- Execution functions to automate the executions of the Java program and do the performance analysis.
 
-2. Then, it reads the text file created (which contains the logs) during the execution.
+#### 2.2.2. Correctness check process
 
-3. From there, the history of the execution is created by parsing the logs and storing the results in objects (operation and history classes). Liveness is verified during this phase. If each operation launched terminates, the execution is lively.
+The Python program launches the execution of nine instances of our Java program with the combination of these parameters: N = 3, 10, 100 and M = 3, 10, 100 as command line arguments. For each instance, we redirect the output to a text file and these steps are performed:
 
-4. After that, we verify if the execution is safety. To perform this, we verify for each get that its return value is either the one of the last put or the one of a concurrent put and that a new-old inversion didn't happen.
+1. The program reads the text file created (which contains the logs) during the execution.
 
-5. If liveness and safety are respected, the execution is correct and we display the performance data. We will study that in the next part.
+2. From there, the history of the execution is created by parsing the logs and storing the results in objects (operation and history classes). Liveness is verified during this phase. If each operation launched terminates, the execution is lively.
+
+3. After that, we verify if the execution is safety. To perform this, we verify that for each get, its return value is either the one of the last put, the one of a concurrent put or the one of a concurrent put of the last put and that a new-old inversion didn't happen.
+
+4. If liveness and safety are respected, the execution is correct and we display the performance data. We will study that in the next part.
 
 
 ### 2.3. Output
@@ -302,7 +308,7 @@ Moreover, our program has a very low latency: the highest computation time is on
 |10  |2372.0 |2303.5 |867.0 |
 |100 |21983.0|17072.5|5313.5|
 
-For the put median duration, we remark that it increases when N increases but it decreases as M increases. This can be explained by the fact that operations are performed faster and faster as the execution is going on.
+For the put median duration, we remark that it increases when N increases but it decreases as M increases. Indeed, if the number of actors is bigger, it takes more time to send read/write requests to all other actors and wait for their answer. For M, it can be explained by the fact that operations are performed faster and faster as the execution is going on.
 
 - Get median duration (in $\mu$s)
 
