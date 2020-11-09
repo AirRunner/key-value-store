@@ -2,11 +2,22 @@
 
 ## 1. Description of the system
 
-### 1.1. Processes
+### 1.1. System
 
 The aim of this project is to create a key-value store. To do this, we have implemented a multi-writer multi-reader atomic registers system. The principle is therefore to create a system containing several registers. Each register can perform two theoretical actions: read its local value corresponding to a given key, and write a local value for a given key (hence the name 'key-value').
 
-#### 1.1.1. Attributes
+#### 1.1.1. System termination
+
+Theoretically, an actor system nevers stops. However, as we will see later in this report, we needed to stop it when all processing was done in order to analyse the output.
+
+To explain our shutdown system briefly, we have set up a thread for each process to measure the "rest" time of each one, i.e. how long in a row the process is inactive. As soon as the process starts working again, the thread stops. We have set this downtime to a maximum of 1 second, at the end of which the process is terminated.
+
+At the same time, we carry out regular checks at the system level. When all processes in the system are terminated, the system terminates and so do the programme.
+
+
+### 1.2. Processes
+
+#### 1.2.1. Attributes
 
 This system is composed of `N` processes. Each process runs using nine main attributes, as shown below.
 
@@ -19,7 +30,7 @@ This system is composed of `N` processes. Each process runs using nine main attr
 - `seqNumber`: the sequence number corresponding to the current operation
 - `ackNumber`: the number of received acknowledgments
 
-#### 1.1.2. States
+#### 1.2.2. States
 
 The process can be into five different states, described below.
 
@@ -29,7 +40,7 @@ The process can be into five different states, described below.
 - `wait_write`: At the end of a `PUT` request, the process passes to this state until it receives all write responses.
 - `none`: By default, and when no operation is running, the process is in this state.
 
-#### 1.1.3. Messages
+#### 1.2.3. Messages
 
 The processes can receive eight different types of messages. At each message processing, the process executes the following operations:
 
@@ -45,7 +56,7 @@ The processes can receive eight different types of messages. At each message pro
 	- `WriteResponse`: process an incoming write response from a previous write request
 
 
-### 1.2. Messages processing
+### 1.3. Messages processing
 
 The main method of a process is `onReceive()`. It is the method called each time a process receives a message. According to the type of message, the corresponding private method will be called to process it.
 
@@ -58,28 +69,28 @@ nextOperation();
 
 Concerning requests and responses, the process processes them immediatly as they arrive, without stocking them. Let's now see it more in details.
 
-#### 1.2.1. Operations
+#### 1.3.1. Operations
 
 The two possible operations are `GET` and `PUT`, and run as follows:
 
 ![](diagrams/operations.png)
 
-##### 1.2.1.1. Get
+##### 1.3.1.1. Get
 
 A `Get` message only contains the requested key.
 
 When launching a `GET` request, the process passes to `GET` state and just sends `Read` requests to all other processes.
 A read request is sent with the key as well as a sequence number, in order to recognise corresponding responses.
 
-##### 1.2.1.2 Put
+##### 1.3.1.2 Put
 
 A `Put` message contains the requested key and a proposal value to write.
 
 When launching a `PUT` request, the process passes to `PUT` state. Then, it first sends `Read` requests with the key to all other processes.
 
-#### 1.2.2. Requests and responses
+#### 1.3.2. Requests and responses
 
-##### 1.2.2.1 Read request
+##### 1.3.2.1 Read request
 
 A `Read` request contains the requested key and the sequence number of the initial request.
 
@@ -89,7 +100,7 @@ When receiving a read request, the process reads in its values and timestamps ma
 sendRequests(Request.READ, msg.key);
 ```
 
-##### 1.2.2.2. Read response
+##### 1.3.2.2. Read response
 
 A `Read` response contains the initially sent key, the sequence number, as well as the found value and timestamp.
 
@@ -117,7 +128,7 @@ If all the read responses returned null, the default timestamp to put is 1.
 putValue(msg.key, this.proposal, putTimestamp + 1);
 ```
 
-##### 1.2.2.3. Write request
+##### 1.3.2.3. Write request
 
 A `Write` request contains the key, the sequence number, as well as the proposal value and the new timestamp.
 
@@ -130,7 +141,7 @@ msg.timestamp > this.timestamps.get(msg.key) || (msg.timestamp == this.timestamp
 
 Finally, the process sends a confirmation `Write` response, only containing the sequence number and the wrote key.
 
-##### 1.2.2.4. Write response
+##### 1.3.2.4. Write response
 
 As explained, a `Write` response contains the sequence number of the initial request and the key.
 
@@ -176,9 +187,13 @@ To check the correctness of our implementation, we execute our program nine time
 All the steps are automated:
 
 1. The program launches one by one the nine instances with different N and M parameter values. To perform this, it executes the Java program with the corresponding command line arguments (N and M values). The output is redirected to a text file.
+
 2. Then, it reads the text file created (which contains the logs) during the execution.
+
 3. From there, the history of the execution is created by parsing the logs and storing the results in objects (operation and history classes). Liveness is verified during this phase. If each operation launched terminates, the execution is lively.
+
 4. After that, we verify if the execution is safety. To perform this, we verify for each get that its return value is either the one of the last put or the one of a concurrent put and that a new-old inversion didn't happen.
+
 5. If liveness and safety are respected, the execution is correct and we display the performance data. We will study that in the next part.
 
 
@@ -260,7 +275,10 @@ We can see that our implementation is correct for every N and M combination.
 
 ### 3.1. How we measure durations
 
-`//TODO`
+Each process has a timer attribute `chrono`, to which the current time of the system is assigned, in nanoseconds, at each operation beginning. When the operation ends, the ealpsed time is calculated by making the difference between this value and the current time.  
+The times are displayed in microseconds, as a nanosecond precision is not necessary. In fact, the fastest operation is made in around 100 microseconds, that is 100,000 nanoseconds.
+
+We can notice in the logs that the first times are very long compared to the overall. We assume that this is due to the start of the Java Virtual Machine (JVM), which may have to run a lot of processes, load information into memory or generate some caches. Therefore, our Python script analyses the latency for each type of operation, displaying the median times. According to the previous observations, calculating the median seems more relevant than the average, which would be too much influenced by the high latencies of the beginning.
 
 
 ### 3.2. Results and analysis
