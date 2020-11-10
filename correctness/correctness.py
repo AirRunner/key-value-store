@@ -1,5 +1,5 @@
-import re
-import os
+from os import system
+from re import search
 from datetime import datetime
 from statistics import median
 
@@ -7,35 +7,35 @@ from statistics import median
 ## Parsers
 
 def parseTime(string):
-    match = re.search(r"[0-9]{4}-.*(\.|,)[0-9]{1,6}", string)
+    match = search(r"[0-9]{4}-.*(\.|,)[0-9]{1,6}", string)
     if match is None:
-        match = re.search(r"[0-9]{4}-.*:[0-9]{2}", string)
+        match = search(r"[0-9]{4}-.*:[0-9]{2}", string)
         return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S")
     return datetime.strptime(match[0], "%Y-%m-%d %H:%M:%S{}%f".format(match[1]))
 
 
 def parseActor(string):
-    match = re.search(r" p([0-9]+) ", string)
+    match = search(r" p([0-9]+) ", string)
     return int(match[1])
 
 
 def parseOperation(string):
-    match = re.search(r"put|get|got", string)
+    match = search(r"put|get|got", string)
     return match[0].replace("got", "get")
 
 
 def isStarting(string):
-    match = re.search("is launching", string)
+    match = search("is launching", string)
     return match is not None
 
 
 def parseValues(string):
-    match = re.search(r"value \[([0-9]+)\] .* timestamp \[([0-9]+)\]", string)
+    match = search(r"value \[([0-9]+)\] .* timestamp \[([0-9]+)\]", string)
     return int(match[1]), int(match[2])
 
 
 def parseChrono(string):
-    match = re.search(r"([0-9]+)μs", string)
+    match = search(r"([0-9]+)μs", string)
     return int(match[1])
 
 
@@ -160,7 +160,7 @@ def launch(N, M):
     with open("command.txt", "r", encoding="utf8") as command:
         cmd = command.read()
 
-    os.system("{} {} {} > logs.txt".format(cmd, N, M))
+    system("{} {} {} > logs.txt".format(cmd, N, M))
 
 
 def main():
